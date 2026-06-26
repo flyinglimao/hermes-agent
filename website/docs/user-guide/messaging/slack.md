@@ -470,6 +470,43 @@ platforms:
       reply_broadcast: false
 ```
 
+### Multi-Agent Bot Identity
+
+Hermes can send Slack messages as different personas (for example `coder`, `seller`, `PM`) using a single Slack App. This is useful when multiple agents share one Hermes instance but should appear as separate identities in Slack.
+
+```yaml
+platforms:
+  slack:
+    # Default bot identity for this platform
+    extra:
+      bot_identity:
+        username: hermes-bot
+        icon_emoji: ":robot_face:"
+        icon_url: "https://example.com/bot-avatar.png"
+```
+
+| Key | Required | Description |
+|-----|----------|-------------|
+| `username` | No | Display name shown in Slack for bot messages. |
+| `icon_emoji` | No | Emoji used as the bot icon (e.g. `:robot_face:`). |
+| `icon_url` | No | URL to an image used as the bot icon. Overrides `icon_emoji` when both are set. |
+
+Priority: **message metadata > platform config > Slack App default**.
+
+```json
+{
+  "slack_identity": {
+    "username": "coder-bot",
+    "icon_emoji": ":gear:",
+    "icon_url": "https://example.com/coder.png"
+  }
+}
+```
+
+:::note
+If overrides have no effect, make sure your Slack app has the new granular permission `chat:write.customize`. Reinstall the app after adding it.
+:::
+
 ---
 
 

@@ -424,7 +424,47 @@ platforms:
       reply_broadcast: false
 ```
 
+### Multi-Agent Bot Identity
+
+Hermes 可以讓單一 Slack App 以不同 persona 發送訊息（例如 `coder`、`seller`、`PM`）。適合多個 agent 共用一個 Hermes 實例，但在 Slack 中要顯示為不同身份的場景。
+
+```yaml
+platforms:
+  slack:
+    # 此平台預設 bot 身份
+    extra:
+      bot_identity:
+        username: hermes-bot
+        icon_emoji: ":robot_face:"
+        icon_url: "https://example.com/bot-avatar.png"
+```
+
+| 鍵 | 必要 | 說明 |
+|-----|----------|-------------|
+| `username` | 否 | 訊息在 Slack 顯示的 bot 名稱。 |
+| `icon_emoji` | 否 | 用作 bot 圖示的 emoji（例如 `:robot_face:`）。 |
+| `icon_url` | 否 | 用作 bot 圖示的圖片 URL。與 `icon_emoji` 同時設定時，優先使用 `icon_url`。 |
+
+個別訊息可以在 task metadata 中傳入 `slack_identity` dict，覆写平台預設值：
+
+```json
+{
+  "slack_identity": {
+    "username": "coder-bot",
+    "icon_emoji": ":gear:",
+    "icon_url": "https://example.com/coder.png"
+  }
+}
+```
+
+優先順序：**訊息 metadata > 平台 config > Slack App 預設**。
+
+:::note
+如果 bot token 使用新的細粒度權限且 app 缺少 `chat:write.customize`，Slack 會忽略 `username` / `icon_*` 覆寫。傳統 `bot` token 通常仍允許這些欄位。若覆寫無效，請在新增 `chat:write.customize` scope 後重新安裝 app。
+:::
+
 ---
+
 
 ## 主频道
 
