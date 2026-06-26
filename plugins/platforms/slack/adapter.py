@@ -1223,6 +1223,34 @@ class SlackAdapter(BasePlatformAdapter):
             return self._team_clients[team_id]
         return self._app.client  # fallback to primary
 
+    def _get_bot_identity(self, metadata: Optional[Dict[str, Any]]) -> Dict[str, str]:
+        """Return optional Slack bot identity overrides for this message.
+
+        Priority:
+        1. ``metadata["slack_identity"]`` dict from per-task metadata.
+        2. ``self.config.extra["bot_identity"]`` from platform config.
+        """
+        identity: Dict[str, str] = {}
+        if isinstance(metadata, dict):
+            meta_id = metadata.get("slack_identity")
+            if isinstance(meta_id, dict):
+                if meta_id.get("username"):
+                    identity["username"] = str(meta_id["username"])
+                if meta_id.get("icon_emoji"):
+                    identity["icon_emoji"] = str(meta_id["icon_emoji"])
+                if meta_id.get("icon_url"):
+                    identity["icon_url"] = str(meta_id["icon_url"])
+        if not identity and isinstance(self.config.extra, dict):
+            cfg = self.config.extra.get("bot_identity")
+            if isinstance(cfg, dict):
+                if cfg.get("username") and "username" not in identity:
+                    identity["username"] = str(cfg["username"])
+                if cfg.get("icon_emoji") and "icon_emoji" not in identity:
+                    identity["icon_emoji"] = str(cfg["icon_emoji"])
+                if cfg.get("icon_url") and "icon_url" not in identity:
+                    identity["icon_url"] = str(cfg["icon_url"])
+        return identity
+
     async def send(
         self,
         chat_id: str,
@@ -1252,7 +1280,7 @@ class SlackAdapter(BasePlatformAdapter):
 
             # Split long messages, preserving code block boundaries
             chunks = self.truncate_message(formatted, self.MAX_MESSAGE_LENGTH)
-
+            identity = self._get_bot_identity(metadata)
             thread_ts = self._resolve_thread_ts(reply_to, metadata)
             last_result = None
 
@@ -1261,18 +1289,22 @@ class SlackAdapter(BasePlatformAdapter):
             broadcast = self.config.extra.get("reply_broadcast", False)
 
             for i, chunk in enumerate(chunks):
-                kwargs = {
+                kwargs: Dict[str, Any] = {
                     "channel": chat_id,
                     "text": chunk,
                     "mrkdwn": True,
                 }
+                if identity:
+                    kwargs.update(identity)
                 if thread_ts:
                     kwargs["thread_ts"] = thread_ts
                     # Only broadcast the first chunk of the first reply
                     if broadcast and i == 0:
                         kwargs["reply_broadcast"] = True
 
-                last_result = await self._get_client(chat_id).chat_postMessage(**kwargs)
+                last_result = await self._get_client(chat_id).chat_postMessage(
+                    **kwargs,
+                )
 
             # Clear Slack Assistant status as soon as the final message is posted.
             if thread_ts:
